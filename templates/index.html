@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BI-Driven Health Risk Advisor</title>
+    <!-- Added Chart.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* --- Base Styles (DARK MODE) --- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #121212; /* Dark background */
+            color: #e0e0e0; /* Light text */
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        /* --- Main Layout --- */
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #ffffff; /* White title */
+            font-weight: 600;
+            margin-bottom: 2rem;
+        }
+
+        .top-section {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .bottom-section {
+            display: grid;
+            grid-template-columns: 1fr;
+        }
+
+        /* --- Card Styles (DARK MODE) --- */
+        .card {
+            background-color: #1e1e1e; /* Dark card background */
+            border: 1px solid #333; /* Subtle border */
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            padding: 2rem;
+        }
+        
+        .card h2 {
+            margin-top: 0;
+            color: #ffffff;
+            border-bottom: 2px solid #00796b; /* Teal accent */
+            padding-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        /* --- Input Form (Colors Updated) --- */
+        #prediction-form {
+            align-self: start;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: #00b0ff; /* Bright Blue for labels */
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 0.75rem;
+            border: 1px solid #444;
+            border-radius: 8px;
+            font-size: 1rem;
+            background-color: #333; /* Dark input background */
+            color: #e0e0e0; /* Light text in input */
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #00b0ff; /* Blue focus */
+            box-shadow: 0 0 0 2px rgba(0, 176, 255, 0.2);
+        }
+
+        .predict-button {
+            grid-column: 1 / -1; 
+            padding: 1rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #ffffff;
+            background-color: #00796b; /* Teal button */
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+
+        .predict-button:hover {
+            background-color: #004d40; /* Darker teal */
+            box-shadow: 0 4px 8px rgba(0, 77, 64, 0.2);
+        }
+
+        /* --- Output Card (Colors Updated) --- */
+        #output-card {
+            text-align: center;
+            align-self: start;
+        }
+
+        .gauge-container {
+            width: 250px;
+            height: 125px;
+            margin: 1rem auto;
+            position: relative;
+            overflow: hidden;
+            border-radius: 125px 125px 0 0;
+            background: linear-gradient(to right, #66bb6a, #ffee58, #ffa726, #ef5350); /* Green to Red */
+        }
+
+        .gauge-overlay {
+            width: 100%;
+            height: 100%;
+            background-color: #1e1e1e; /* Match dark card background */
+            position: absolute;
+            bottom: 0;
+            width: 200px;
+            height: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 100px 100px 0 0;
+        }
+        
+        .gauge-needle {
+            width: 4px;
+            height: 95px;
+            background-color: #e0e0e0; /* Light needle */
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform-origin: bottom center;
+            transform: translateX(-50%) rotate(-90deg); 
+            transition: transform 0.5s ease-in-out;
+            border-radius: 4px 4px 0 0;
+        }
+        
+        .gauge-center {
+            width: 15px;
+            height: 15px;
+            background-color: #e0e0e0; /* Light center */
+            border-radius: 50%;
+            position: absolute;
+            bottom: -7.5px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+        }
+
+        #risk-probability {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #f97316; /* Radium Orange for percentage */
+            margin: 0.5rem 0;
+        }
+
+        #risk-cluster,
+        #risk-explanation {
+            font-size: 1.1rem;
+            color: #b0b0b0; /* Softer light grey */
+            margin-top: 1rem;
+        }
+        
+        #dynamic-explanation {
+            text-align: left; 
+            margin-top: 1.5rem; 
+            display: none; /* Hidden by default */
+            border-top: 1px solid #333;
+            padding-top: 1rem;
+            opacity: 0;
+            transition: opacity 0.6s ease-in-out; /* Fade-in */
+        }
+        #dynamic-explanation h4 {
+            margin-top: 0;
+            margin-bottom: 0.5rem; 
+            color: #00b0ff; /* Blue title */
+        }
+        #dynamic-explanation p {
+            /* --- TASK 3: UPDATED GAUGE EXPLANATION STYLING --- */
+            font-size: 1.3rem; /* Was 1.2rem */
+            color: #ffffff;
+            font-weight: 500;
+            line-height: 1.6; /* Added */
+            margin: 0;
+        }
+
+        #error-message {
+            color: #ef5350; /* Red */
+            font-weight: 500;
+            margin-top: 1rem;
+            display: none; /* Hidden by default */
+        }
+
+        /* --- Insights Card --- */
+        
+
+        .plots-container {
+            display: grid;
+            grid-template-columns: 1fr; /* Stacks plots vertically */
+            gap: 3rem; 
+        }
+
+        .plot-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        /* --- Style for the chart container --- */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            /* --- TASK 1: Chart width updated to 750px --- */
+            max-width: 750px; 
+            height: 400px; /* Task 1 Style */
+            margin: 0 auto; /* Center the chart */
+        }
+        
+        .plot-explanation {
+            /* --- TASK 2: PLOT EXPLANATION STYLING --- */
+            font-size: 1.3rem; /* Was 1.2rem */
+            color: #ffffff;
+            font-weight: 500;
+            text-align: center;
+            padding-top: 12px; /* Was 10px */
+            line-height: 1.6; /* Added */
+            max-width: 750px; /* Match chart width */
+            opacity: 0;
+            /* --- Optional Enhancement: Fade-in animation --- */
+            transition: opacity 0.6s ease-in-out; /* Was 0.4s */
+        }
+        
+        /* --- Responsive Design --- */
+        @media (max-width: 900px) {
+            .top-section {
+                grid-template-columns: 1fr; /* Stack form and output */
+            }
+        }
+        
+        @media (max-width: 750px) {
+             /* Adjust chart height on smaller screens */
+            .chart-container {
+                height: 350px;
+                 max-width: 95%; /* Use more width on smaller screens */
+            }
+             .plot-explanation {
+                 max-width: 95%;
+             }
+        }
+
+        @media (max-width: 600px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            body {
+                padding: 1rem;
+            }
+             .chart-container {
+                height: 300px;
+            }
+             .plot-explanation {
+                font-size: 1.1rem; /* Slightly smaller on mobile */
+             }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>BI-Driven Health Risk Advisor</h1>
+
+        <!-- Top Section Layout -->
+        <div class="top-section">
+            
+            <!-- ====== FORM CARD (Card 1) ====== -->
+            <form id="prediction-form" class="card">
+                <h2>Your Health Profile</h2>
+                <div class="form-grid">
+                    
+                    <!-- Biometric Inputs -->
+                    <div class="form-group">
+                        <label for="Age">Age</label>
+                        <input type="number" id="Age" name="Age" placeholder="e.g., 51" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="Gender">Gender</label>
+                        <select id="Gender" name="Gender" required>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="BMI">BMI</label>
+                        <input type="number" step="0.1" id="BMI" name="BMI" placeholder="e.g., 28.6" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="FastingGlucose_mg_dL">Fasting Glucose (mg/dL)</label>
+                        <input type="number" id="FastingGlucose_mg_dL" name="FastingGlucose_mg_dL" placeholder="e.g., 103">
+                    </div>
+                    <div class="form-group">
+                        <label for="TotalCholesterol_mg_dL">Total Cholesterol (mg/dL)</label>
+                        <input type="number" id="TotalCholesterol_mg_dL" name="TotalCholesterol_mg_dL" placeholder="e.g., 185">
+                    </div>
+                     <div class="form-group">
+                        <label for="SystolicBloodPressure">Systolic BP (Top #)</label>
+                        <input type="number" id="SystolicBloodPressure" name="SystolicBloodPressure" placeholder="e.g., 124">
+                    </div>
+                     <div class="form-group">
+                        <label for="DiastolicBloodPressure">Diastolic BP (Bottom #)</label>
+                        <input type="number" id="DiastolicBloodPressure" name="DiastolicBloodPressure" placeholder="e.g., 70">
+                    </div>
+                    
+                    <!-- Lifestyle Inputs (User-Friendly) -->
+                    <div class="form-group">
+                        <label for="DietType">Typical Diet</label>
+                        <select id="DietType" name="DietType" required>
+                            <option value="balanced">Balanced</option>
+                            <option value="low_fat">Low Fat</option>
+                            <option value="low_sugar">Low Sugar / Low Carb</option>
+                            <option value="high_protein">High Protein</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="HoursOfSleep">Avg. Hours of Sleep</label>
+                        <input type="number" step="0.5" id="HoursOfSleep" name="HoursOfSleep" placeholder="e.g., 7">
+                    </div>
+                    <div class="form-group">
+                        <label for="SmokesNow">Do you currently smoke?</label>
+                        <select id="SmokesNow" name="SmokesNow" required>
+                            <option value="No">No</option>
+                            <option value="Yes">Yes</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="AlcoholFrequency">Alcohol Frequency</label>
+                        <select id="AlcoholFrequency" name="AlcoholFrequency" required>
+                            <option value="0">Not at all</option>
+                            <option value="1">Once a week</option>
+                            <option value="2">Several days a week</option>
+                            <option value="3">Every day</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="VigorousActivity">Vigorous Activity?</label>
+                        <select id="VigorousActivity" name="VigorousActivity" required>
+                            <option value="No">No</option>
+                            <option value="Yes">Yes</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="ModerateActivity">Moderate Activity?</label>
+                        <select id="ModerateActivity" name="ModerateActivity" required>
+                            <option value="No">No</option>
+                            <option value="Yes">Yes</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="predict-button">Calculate My Risk</button>
+            </form>
+
+            <!-- ====== OUTPUT CARD (Card 2) ====== -->
+            <div id="output-card" class="card">
+                <h2>Your Risk Assessment</h2>
+                <div class="gauge-container">
+                    <div class="gauge-overlay"></div>
+                    <div class="gauge-needle" id="gauge-needle"></div>
+                    <div class="gauge-center"></div>
+                </div>
+                <div id="risk-probability">--%</div>
+                <div id="risk-explanation">
+                    Enter your health profile to see your personalized risk for <strong>High Blood Pressure</strong>.
+                </div>
+                <div id="risk-cluster" style="font-weight: 600; margin-top: 1rem;"></div>
+                
+                <div id="dynamic-explanation">
+                    <h4>Explanation for Your Result:</h4>
+                    <p id="explanation-text"></p>
+                </div>
+
+                <div id="error-message"></div>
+            </div>
+
+        </div> <!-- /top-section -->
+
+
+        <!-- Bottom Section Layout -->
+        <div class="bottom-section">
+
+            <!-- ====== INSIGHTS CARD (Card 3) ====== -->
+            <div id="insights-card" class="card">
+                <h2>Model Insights</h2>
+                <div class="plots-container">
+                    
+                    <!-- Plot 1 (Existing) + Explanation -->
+                    <div class="plot-item">
+                        <div class="chart-container">
+                            <canvas id="biometricChart"></canvas>
+                        </div>
+                        <p class="plot-explanation" id="biometric-explanation">
+                            This chart compares your key biometrics to the dataset average.
+                        </p>
+                    </div>
+                    
+                    <!-- Plot 2 (Existing) + Explanation -->
+                    <div class="plot-item">
+                        <div class="chart-container">
+                             <canvas id="lifestyleChart"></canvas>
+                        </div>
+                         <p class="plot-explanation" id="lifestyle-explanation">
+                            This chart breaks down your lifestyle habits into risk vs. healthy factors.
+                        </p>
+                    </div>
+
+                    <!-- Plot 3 (Existing) + Explanation -->
+                    <div class="plot-item">
+                        <div class="chart-container">
+                             <canvas id="radarChart"></canvas>
+                        </div>
+                         <p class="plot-explanation" id="radar-explanation">
+                            This chart visualizes your key risk factors against the average.
+                        </p>
+                    </div>
+                    
+                    <!-- ====== TASK 1: NEW DYNAMIC LINE CHART ADDED ====== -->
+                    <div class="plot-item">
+                        <div class="chart-container">
+                             <canvas id="lineChart"></canvas>
+                        </div>
+                         <p class="plot-explanation" id="line-explanation">
+                            This chart plots your key metrics against the ideal healthy range.
+                        </p>
+                    </div>
+                    <!-- ====== END OF NEW PLOT ====== -->
+
+                </div>
+            </div>
+
+        </div> <!-- /bottom-section -->
+
+    </div> <!-- /container -->
+
+    <script>
+        // --- Global chart variables ---
+        let biometricChart = null;
+        let lifestyleChart = null;
+        let radarChart = null; 
+        let lineChart = null; // --- NEW: Added line chart variable ---
+
+        // --- Helper function to parse inputs safely ---
+        const safeFloat = (val, defaultVal = 0) => {
+            if (val === null || val === undefined || val === '') return defaultVal;
+            const num = parseFloat(val);
+            return isNaN(num) ? defaultVal : num;
+        };
+        
+        // --- Helper to normalize a value given a [min, max] range to a [0, 10] scale ---
+        const normalize = (val, min, max) => {
+            val = safeFloat(val);
+            if (val < min) return 0;
+            if (val > max) return 10;
+            // Prevent division by zero if min === max
+            if (max === min) return 5; 
+            return ((val - min) / (max - min)) * 10;
+        };
+
+
+        // ====== Function to update dynamic charts ======
+        function updateCharts(inputs) {
+            
+            // --- Chart 1: Biometric Comparison (Bar Chart) ---
+            const ctx1 = document.getElementById('biometricChart').getContext('2d');
+            
+            const userBMI = safeFloat(inputs.BMI);
+            const userCholesterol = safeFloat(inputs.TotalCholesterol_mg_dL);
+            const userGlucose = safeFloat(inputs.FastingGlucose_mg_dL);
+            const userSystolic = safeFloat(inputs.SystolicBloodPressure);
+            
+            const avgBMI = 28.6;
+            const avgCholesterol = 185;
+            const avgGlucose = 103;
+            const avgSystolic = 124;
+
+            const chart1Data = {
+                labels: ['BMI', 'Cholesterol (mg/dL)', 'Glucose (mg/dL)', 'Systolic BP'],
+                datasets: [
+                    {
+                        label: 'Your Value',
+                        data: [userBMI, userCholesterol, userGlucose, userSystolic],
+                        backgroundColor: '#f97316', // Radium Orange
+                        borderColor: '#f97316',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Dataset Average',
+                        data: [avgBMI, avgCholesterol, avgGlucose, avgSystolic],
+                        backgroundColor: '#00b0ff', // Bright Blue
+                        borderColor: '#00b0ff',
+                        borderWidth: 1
+                    }
+                ]
+            };
+            
+            const chart1Options = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: '#ffffff', font: { size: 14 } } }, 
+                    // TASK 1: Title font size 20px
+                    title: { display: true, text: 'Your Biometrics vs. Average', color: '#ffffff', font: { size: 20 } }
+                },
+                scales: {
+                    y: {
+                        ticks: { color: '#ffffff', font: { size: 16 } }, // Label font size 16px
+                        grid: { color: '#444' }
+                    },
+                    x: {
+                        ticks: { color: '#ffffff', font: { size: 16 } }, // Label font size 16px
+                        grid: { color: '#444' }
+                    }
+                }
+            };
+
+            if (biometricChart) {
+                biometricChart.destroy();
+            }
+            biometricChart = new Chart(ctx1, { type: 'bar', data: chart1Data, options: chart1Options });
+
+
+            // --- Chart 2: Lifestyle Factors (Doughnut Chart) ---
+            const ctx2 = document.getElementById('lifestyleChart').getContext('2d');
+            
+            let riskFactors = 0;
+            let healthyFactors = 0;
+
+            if (inputs.SmokesNow === 'Yes') riskFactors++; else healthyFactors++;
+            if (inputs.AlcoholFrequency !== '0') riskFactors++; else healthyFactors++;
+            if (inputs.ModerateActivity === 'No' && inputs.VigorousActivity === 'No') riskFactors++; else healthyFactors++;
+            if (safeFloat(inputs.HoursOfSleep, 7) < 6) riskFactors++; else healthyFactors++; // Use 7 as default
+            
+            const chart2Data = {
+                labels: ['Lifestyle Risk Factors', 'Healthy Lifestyle Factors'],
+                datasets: [{
+                    data: [riskFactors, healthyFactors],
+                    backgroundColor: ['#ef5350', '#66bb6a'], // Red, Green
+                    borderColor: '#1e1e1e',
+                    borderWidth: 4
+                }]
+            };
+
+            const chart2Options = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { 
+                        position: 'top',
+                        labels: { color: '#ffffff', font: { size: 14 } } // Legend font size 14px
+                    },
+                    // TASK 1: Title font size 20px
+                    title: { display: true, text: 'Lifestyle Factor Breakdown', color: '#ffffff', font: { size: 20 } },
+                    tooltip: {
+                        backgroundColor: '#1e1e1e', titleColor: '#ffffff', bodyColor: '#ffffff',
+                        bodyFont: { size: 14 },
+                        titleFont: { size: 16 }
+                    }
+                }
+            };
+
+            if (lifestyleChart) {
+                lifestyleChart.destroy();
+            }
+            lifestyleChart = new Chart(ctx2, { type: 'doughnut', data: chart2Data, options: chart2Options });
+
+            
+            // --- Chart 3: Risk Profile (Radar Chart) ---
+            const ctx3 = document.getElementById('radarChart').getContext('2d');
+
+            const userNormBMI = normalize(userBMI, 18, 35); 
+            const userNormChol = normalize(userCholesterol, 150, 250);
+            const userNormGluc = normalize(userGlucose, 70, 130);
+            const userNormSys = normalize(userSystolic, 90, 140);
+            const userNormSleepRisk = 10 - normalize(safeFloat(inputs.HoursOfSleep, 7), 4, 9); // Inverted
+
+            const avgNormBMI = normalize(avgBMI, 18, 35);
+            const avgNormChol = normalize(avgCholesterol, 150, 250);
+            const avgNormGluc = normalize(avgGlucose, 70, 130);
+            const avgNormSys = normalize(avgSystolic, 90, 140);
+            const avgNormSleepRisk = 10 - normalize(7, 4, 9);
+
+            const chart3Data = {
+                labels: ['BMI', 'Cholesterol', 'Glucose', 'Systolic BP', 'Sleep Deficit'],
+                datasets: [
+                    {
+                        label: 'Your Profile (Normalized)',
+                        data: [userNormBMI, userNormChol, userNormGluc, userNormSys, userNormSleepRisk],
+                        backgroundColor: 'rgba(249, 115, 22, 0.2)', // Orange
+                        borderColor: 'rgba(249, 115, 22, 1)',
+                        borderWidth: 2,
+                        pointBackgroundColor: 'rgba(249, 115, 22, 1)'
+                    },
+                    {
+                        label: 'Average Profile (Normalized)',
+                        data: [avgNormBMI, avgNormChol, avgNormGluc, avgNormSys, avgNormSleepRisk],
+                        backgroundColor: 'rgba(0, 176, 255, 0.2)', // Blue
+                        borderColor: 'rgba(0, 176, 255, 1)',
+                        borderWidth: 2,
+                        pointBackgroundColor: 'rgba(0, 176, 255, 1)'
+                    }
+                ]
+            };
+            
+            const chart3Options = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    // TASK 1: Title font size 20px
+                    title: { display: true, text: 'Your Risk Profile vs. Average (Normalized)', color: '#ffffff', font: { size: 20 } }, 
+                    // TASK 1: Legend font size 14px
+                    legend: { labels: { color: '#ffffff', font: { size: 14 } } },
+                    tooltip: {
+                        backgroundColor: '#1e1e1e', titleColor: '#ffffff', bodyColor: '#ffffff',
+                        bodyFont: { size: 14 },
+                        titleFont: { size: 16 }
+                    }
+                },
+                scales: {
+                    r: {
+                        // TASK 1: Label font size 16px, color white
+                        pointLabels: { font: { size: 16 }, color: '#ffffff' }, 
+                        grid: { color: '#444' },
+                        angleLines: { color: '#444' },
+                        ticks: {
+                            backdropColor: '#1e1e1e',
+                            color: '#e0e0e0',
+                            font: { size: 12 },
+                            stepSize: 2 
+                        },
+                        suggestedMin: 0,
+                        suggestedMax: 10
+                    }
+                }
+            };
+            
+            if (radarChart) {
+                radarChart.destroy();
+            }
+            radarChart = new Chart(ctx3, { type: 'radar', data: chart3Data, options: chart3Options });
+
+            // --- TASK 1: NEW LINE CHART ---
+            const ctx4 = document.getElementById('lineChart').getContext('2d');
+
+            // Data for the 'Ideal' line (Normalized 0-10)
+            const idealData = {
+                BMI: normalize(22, 18, 35), // Ideal BMI 22
+                SystolicBP: normalize(110, 90, 140), // Ideal SBP 110
+                Glucose: normalize(85, 70, 130), // Ideal Glucose 85
+                Cholesterol: normalize(170, 150, 250), // Ideal Chol 170
+                Sleep: normalize(8, 4, 9) // Ideal Sleep 8 (Not inverted here)
+            };
+
+            const userData = {
+                BMI: userNormBMI,
+                SystolicBP: userNormSys,
+                Glucose: userNormGluc,
+                Cholesterol: userNormChol,
+                Sleep: normalize(safeFloat(inputs.HoursOfSleep, 7), 4, 9) // Non-inverted sleep
+            };
+            
+            const chart4Data = {
+                // TASK 1: X-axis labels
+                labels: ['BMI', 'Systolic BP', 'Glucose', 'Cholesterol', 'Sleep (Hours)'], 
+                datasets: [
+                    {
+                        label: 'Your Profile (Normalized)',
+                        data: [userData.BMI, userData.SystolicBP, userData.Glucose, userData.Cholesterol, userData.Sleep],
+                        borderColor: '#f97316', // Orange
+                        backgroundColor: 'rgba(249, 115, 22, 0.2)',
+                        borderWidth: 3, // TASK 1: Line thickness 3px
+                        fill: false,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Ideal Healthy Profile',
+                        data: [idealData.BMI, idealData.SystolicBP, idealData.Glucose, idealData.Cholesterol, idealData.Sleep],
+                        borderColor: '#00bfff', // TASK 1: Sky Blue border
+                        backgroundColor: 'rgba(0, 191, 255, 0.2)',
+                        borderWidth: 3, // TASK 1: Line thickness 3px
+                        borderDash: [5, 5], // Dashed line for ideal
+                        fill: false,
+                        tension: 0.1
+                    }
+                ]
+            };
+
+            const chart4Options = {
+                responsive: true,
+                maintainAspectRatio: false,
+                // TASK 1: Background color match
+                backgroundColor: '#1e1e1e', 
+                plugins: {
+                    // TASK 1: Title font size 20px
+                    title: { display: true, text: 'Your Profile vs. Ideal Healthy Range (Normalized 0-10)', color: '#ffffff', font: { size: 20 } },
+                    // TASK 1: Legend font size 14px
+                    legend: { labels: { color: '#ffffff', font: { size: 14 } } },
+                    // TASK 1: Tooltip styling
+                    tooltip: {
+                        backgroundColor: '#1e1e1e', titleColor: '#ffffff', bodyColor: '#ffffff',
+                        mode: 'index',
+                        intersect: false,
+                        bodyFont: { size: 14 },
+                        titleFont: { size: 16 }
+                    }
+                },
+                scales: {
+                    y: {
+                        // TASK 1: Label font size 16px, color white
+                        ticks: { color: '#ffffff', font: { size: 16 } }, 
+                        grid: { color: '#444' },
+                        suggestedMin: 0,
+                        suggestedMax: 10
+                    },
+                    x: {
+                         // TASK 1: Label font size 16px, color white
+                        ticks: { color: '#ffffff', font: { size: 16 } },
+                        grid: { color: '#444' }
+                    }
+                }
+            };
+            
+            if (lineChart) {
+                lineChart.destroy();
+            }
+            lineChart = new Chart(ctx4, { type: 'line', data: chart4Data, options: chart4Options });
+        }
+
+
+        // ====== Helper function to generate dynamic explanations (for gauge) ======
+        function generateExplanation(inputs) {
+            let explanations = [];
+            
+            const bmi = safeFloat(inputs.BMI);
+            const cholesterol = safeFloat(inputs.TotalCholesterol_mg_dL);
+            const glucose = safeFloat(inputs.FastingGlucose_mg_dL);
+            const systolic = safeFloat(inputs.SystolicBloodPressure);
+            const diastolic = safeFloat(inputs.DiastolicBloodPressure);
+            const sleep = safeFloat(inputs.HoursOfSleep);
+            const smokes = inputs.SmokesNow; 
+            const alcohol = inputs.AlcoholFrequency;
+            const moderateActivity = inputs.ModerateActivity;
+            const vigorousActivity = inputs.VigorousActivity;
+
+            if (cholesterol > 240) {
+                explanations.push("<strong>high cholesterol</strong> (over 240 mg/dL) can increase arterial stiffness.");
+            }
+            if (glucose > 125) {
+                explanations.push("<strong>elevated glucose</strong> (over 125 mg/dL) can damage blood vessels over time.");
+            }
+            if (smokes === 'Yes') {
+                explanations.push("<strong>smoking</strong> constricts blood vessels.");
+            }
+            if (alcohol !== '0') { 
+                explanations.push("regular <strong>alcohol consumption</strong> can elevate BP.");
+            }
+            if (sleep < 6 && sleep > 0) { 
+                explanations.push("<strong>less than 6 hours of sleep</strong> can contribute to BP risk.");
+            }
+            if (bmi > 25) {
+                explanations.push("a <strong>higher BMI</strong> (over 25) increases strain on the heart.");
+            }
+            if (systolic > 130 || diastolic > 85) {
+                explanations.push("your <strong>blood pressure readings</strong> are above normal, indicating early signs of hypertension risk.");
+            }
+            if (moderateActivity === 'No' && vigorousActivity === 'No') {
+                explanations.push("a <strong>lack of physical activity</strong> reduces heart efficiency.");
+            }
+
+            if (explanations.length === 0) {
+                return "Your key biometric and lifestyle factors appear to be within a healthy range. Keep up the good work!";
+            }
+            let output = "Your risk assessment is based on several factors: ";
+            if (explanations.length === 1) {
+                output += `your result is influenced by ${explanations[0]}`;
+            } else if (explanations.length === 2) {
+                output += `your result is influenced by ${explanations[0]} and ${explanations[1]}`;
+            } else {
+                let firstPart = explanations.slice(0, -1).join(", ");
+                let lastPart = explanations.slice(-1)[0];
+                output += `your result is influenced by factors including ${firstPart}, and ${lastPart}`;
+            }
+            return output + " Managing these areas can help support your cardiovascular health.";
+        }
+        
+        // ====== TASK 2: UPDATED Function to generate EXPANDED PLOT explanations ======
+        function generatePlotExplanations(inputs) {
+            const explanations = {
+                biometric: "",
+                lifestyle: "",
+                radar: "",
+                line: "" // --- Added line explanation property
+            };
+
+            const cholesterol = safeFloat(inputs.TotalCholesterol_mg_dL, 185);
+            const systolic = safeFloat(inputs.SystolicBloodPressure, 124);
+            const glucose = safeFloat(inputs.FastingGlucose_mg_dL, 103);
+            const bmi = safeFloat(inputs.BMI, 28.6);
+            const sleep = safeFloat(inputs.HoursOfSleep, 7);
+            const smokes = inputs.SmokesNow;
+            const alcohol = inputs.AlcoholFrequency;
+            const activity = (inputs.ModerateActivity === 'No' && inputs.VigorousActivity === 'No');
+
+            // --- Logic for Biometric Plot (Plot 1) --- Expanded Explanation
+            let bioRisks = [];
+            if (cholesterol > 240) bioRisks.push(`your high cholesterol (${cholesterol} mg/dL)`);
+            if (systolic > 130) bioRisks.push(`your elevated systolic BP (${systolic} mmHg)`);
+            if (glucose > 125) bioRisks.push(`your high glucose (${glucose} mg/dL)`);
+            if (bmi > 30) bioRisks.push(`your BMI (${bmi}) being in the obese range`);
+
+            if (bioRisks.length > 1) {
+                explanations.biometric = `This chart highlights that your biometric values (orange bars) significantly exceed the dataset average (blue bars) in several areas. 
+                Specifically, ${bioRisks.join(' and ')} are notably elevated. 
+                This pattern suggests a considerable cumulative strain on your cardiovascular system, directly contributing to the calculated high BP risk. 
+                Addressing these specific metrics through lifestyle changes or medical consultation is crucial.`;
+            } else if (bioRisks.length === 1) {
+                 explanations.biometric = `The bar chart clearly shows that ${bioRisks[0]} stands out significantly above the average benchmark. 
+                 While other factors might be closer to the norm, this single elevated metric acts as a strong driver for your overall risk profile. 
+                 Focusing intervention efforts on managing this specific factor could yield substantial benefits for your blood pressure control.`;
+            } else {
+                explanations.biometric = `Excellent - this chart indicates your key biometric markers are all performing well against the dataset average. 
+                Your values (orange bars) are consistently in line with or better than the average (blue bars), showing no immediate red flags for high BP from these clinical measures. 
+                This reflects good baseline health or effective management of these parameters. Maintaining this balance is key for long-term health.`;
+            }
+
+            // --- Logic for Lifestyle Plot (Plot 2) --- Expanded Explanation
+            let lifestyleRisks = [];
+            if (sleep < 6 && sleep > 0) lifestyleRisks.push(`limited sleep (${sleep} hrs)`);
+            if (smokes === 'Yes') lifestyleRisks.push("current smoking status");
+            if (alcohol !== '0') lifestyleRisks.push("regular alcohol consumption");
+            if (activity) lifestyleRisks.push("lack of regular physical activity");
+
+            if (lifestyleRisks.length > 0) {
+                explanations.lifestyle = `The donut chart reveals a significant portion dedicated to 'Lifestyle Risk Factors' (red slice), primarily driven by ${lifestyleRisks.join(', ')}. 
+                These habits directly influence the 'Lifestyle Archetype' the model assigns you, impacting your final risk score. 
+                This visualization underscores the importance of daily choices; improving even one of these areas could shift the balance towards the 'Healthy Factors' (green slice) and lower your risk.`;
+            } else {
+                explanations.lifestyle = `This chart is dominated by the 'Healthy Lifestyle Factors' (green slice), indicating strong protective habits. 
+                Factors like avoiding smoking and alcohol, getting sufficient sleep, and regular activity contribute positively to your profile. 
+                These healthy choices significantly mitigate potential risks identified by other metrics and form a strong foundation for your cardiovascular health. 
+                Continuing these habits is highly beneficial.`;
+            }
+
+            // --- Logic for Radar Plot (Plot 3) --- Expanded Explanation
+            let radarRisks = [];
+            if (systolic > 130) radarRisks.push("Systolic BP");
+            if (cholesterol > 240) radarRisks.push("Cholesterol");
+            if (bmi > 30) radarRisks.push("BMI");
+            if (sleep < 6 && sleep > 0) radarRisks.push("Sleep Deficit");
+            
+            if (radarRisks.length > 0) {
+                explanations.radar = `The radar chart shows your personal risk profile (orange area) expanding significantly outwards compared to the average profile (blue area). 
+                This expansion is particularly pronounced along the axes for ${radarRisks.join(' and ')}, indicating these are your key areas contributing to elevated risk. 
+                The larger overall area covered by your profile visually represents a higher cumulative risk across multiple important health factors.`;
+            } else {
+                explanations.radar = `Your risk profile (orange area) is well-contained, fitting closely within or even smaller than the average profile (blue area). 
+                This balanced shape indicates that none of the measured factors are excessively high compared to the norm. 
+                This visual represents good overall management across these key health dimensions, contributing to a lower calculated risk.`;
+            }
+            
+            // --- Logic for NEW Line Plot (Plot 4) --- Expanded Explanation
+            let lineRisks = [];
+            let lineHealthy = [];
+            if (systolic > 120) lineRisks.push(`Systolic BP (${systolic} mmHg)`); else lineHealthy.push("Systolic BP");
+            if (cholesterol > 200) lineRisks.push(`Cholesterol (${cholesterol} mg/dL)`); else lineHealthy.push("Cholesterol");
+            if (bmi > 25) lineRisks.push(`BMI (${bmi})`); else lineHealthy.push("BMI");
+            if (glucose > 100) lineRisks.push(`Glucose (${glucose} mg/dL)`); else lineHealthy.push("Glucose");
+            if (sleep < 7 && sleep > 0) lineRisks.push(`Sleep (${sleep} hrs)`); else lineHealthy.push("Sleep");
+
+            if (lineRisks.length > 0) {
+                explanations.line = `This line chart compares your normalized health metrics (orange line) against the ideal range (blue dashed line). 
+                Your profile currently trends above the ideal line, particularly influenced by elevated levels in ${lineRisks.join(' and ')}. 
+                This indicates these specific areas are higher than the optimal benchmark for cardiovascular health. 
+                Conversely, your ${lineHealthy.join(' and ')} ${lineHealthy.length > 1 ? 'are' : 'is'} closer to the ideal. Focusing on the elevated metrics could bring your overall profile closer to the healthy baseline.`;
+            } else {
+                explanations.line = `Excellent - your profile (orange line) consistently tracks along or below the ideal healthy range (blue dashed line). 
+                This visual trend across key metrics like BMI, BP, Glucose, Cholesterol, and Sleep indicates optimal levels for supporting cardiovascular health. 
+                Maintaining these values is key to keeping your high blood pressure risk low. Your results reflect strong positive health indicators.`;
+            }
+
+            return explanations;
+        }
+        // ====== END of function ======
+
+
+        document.getElementById('prediction-form').addEventListener('submit', async function (e) {
+            e.preventDefault(); 
+
+            const form = e.target;
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries()); // 'data' now holds all user inputs
+            
+            const resultProbEl = document.getElementById('risk-probability');
+            const resultTextEl = document.getElementById('risk-explanation');
+            const resultClusterEl = document.getElementById('risk-cluster');
+            const gaugeNeedle = document.getElementById('gauge-needle');
+            const errorMessageEl = document.getElementById('error-message');
+
+            const dynamicExplanationDiv = document.getElementById('dynamic-explanation');
+            const explanationTextEl = document.getElementById('explanation-text');
+            
+            const biometricExplanationEl = document.getElementById('biometric-explanation');
+            const lifestyleExplanationEl = document.getElementById('lifestyle-explanation');
+            const radarExplanationEl = document.getElementById('radar-explanation');
+            const lineExplanationEl = document.getElementById('line-explanation'); // --- Get line explanation element ---
+            
+            // Reset UI
+            resultProbEl.textContent = "--%";
+            resultTextEl.textContent = "Calculating...";
+            resultClusterEl.textContent = "";
+            gaugeNeedle.style.transform = `translateX(-50%) rotate(-90deg)`;
+            errorMessageEl.style.display = 'none';
+            
+            dynamicExplanationDiv.style.display = 'none';
+            dynamicExplanationDiv.style.opacity = 0;
+            explanationTextEl.textContent = '';
+            biometricExplanationEl.innerHTML = 'This chart compares your key biometrics to the dataset average.';
+            biometricExplanationEl.style.opacity = 0;
+            lifestyleExplanationEl.innerHTML = 'This chart breaks down your lifestyle habits into risk vs. healthy factors.';
+            lifestyleExplanationEl.style.opacity = 0;
+            radarExplanationEl.innerHTML = 'This chart visualizes your key risk factors against the average.'; 
+            radarExplanationEl.style.opacity = 0; 
+            lineExplanationEl.innerHTML = 'This chart plots your key metrics against the ideal healthy range.'; // --- Reset line text ---
+            lineExplanationEl.style.opacity = 0; // --- Hide line text ---
+
+
+            try {
+                // Use 127.0.0.1 for local development
+                const response = await fetch('http://127.0.0.1:5000/predict', { 
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    let errorMsg = errorData.error || `HTTP error! status: ${response.status}`;
+                    if (typeof errorMsg === 'object') {
+                        errorMsg = JSON.stringify(errorMsg);
+                    }
+                    throw new Error(errorMsg);
+                }
+
+                const result = await response.json();
+                
+                const probability = parseFloat(result.probability);
+                if (isNaN(probability)) {
+                    throw new Error("Received invalid probability from server.");
+                }
+                
+                const cluster = result.cluster;
+
+                // Update Gauge
+                const rotation = (probability / 100) * 180 - 90;
+                gaugeNeedle.style.transform = `translateX(-50%) rotate(${rotation}deg)`;
+                
+                resultProbEl.textContent = `${probability.toFixed(1)}%`;
+
+                // Update Risk Text
+                let explanationText = '';
+                if (probability < 25) {
+                    explanationText = "You are in the <strong>Low Risk</strong> zone for <strong>High Blood Pressure</strong>.";
+                } else if (probability < 50) {
+                    explanationText = "You are in the <strong>Low to Moderate Risk</strong> zone for <strong>High Blood Pressure</strong>. Focus on consistent healthy habits.";
+                } else if (probability < 75) {
+                    explanationText = "You are in the <strong>Moderate Risk</strong> zone for <strong>High Blood Pressure</strong>. Preventive measures are recommended.";
+                } else {
+                    explanationText = "You are in the <strong>High Risk</strong> zone for <strong>High Blood Pressure</strong>. Please consult a healthcare professional.";
+                }
+                resultTextEl.innerHTML = explanationText;
+                
+                // Update Cluster Text
+                resultClusterEl.textContent = `Identified in Lifestyle Archetype: ${cluster}`;
+
+                // Generate and display the dynamic explanation (for gauge)
+                const dynamicExplanation = generateExplanation(data); 
+                if (dynamicExplanation) {
+                    explanationTextEl.innerHTML = dynamicExplanation;
+                    dynamicExplanationDiv.style.display = 'block';
+                    setTimeout(() => { dynamicExplanationDiv.style.opacity = 1; }, 50); 
+                }
+
+                // Update the charts with the new data
+                updateCharts(data); 
+
+                // Generate and display dynamic PLOT explanations
+                const plotExplanations = generatePlotExplanations(data);
+                biometricExplanationEl.innerHTML = plotExplanations.biometric;
+                lifestyleExplanationEl.innerHTML = plotExplanations.lifestyle;
+                radarExplanationEl.innerHTML = plotExplanations.radar; 
+                lineExplanationEl.innerHTML = plotExplanations.line; // --- Set line text ---
+                
+                // Fade in all plot explanations
+                setTimeout(() => { 
+                    biometricExplanationEl.style.opacity = 1;
+                    lifestyleExplanationEl.style.opacity = 1;
+                    radarExplanationEl.style.opacity = 1;
+                    lineExplanationEl.style.opacity = 1; // --- Fade in line text ---
+                }, 50);
+
+            } catch (error) {
+                console.error('Fetch error:', error);
+                resultTextEl.textContent = "Could not calculate risk.";
+                
+                let errorMsg = error.message;
+                if (typeof errorMsg === 'object') {
+                    errorMsg = "An unknown error occurred. Check the server console.";
+                }
+                errorMessageEl.textContent = `Error: ${errorMsg}. Is the 'python app.py' server running?`;
+                errorMessageEl.style.display = 'block';
+                
+                dynamicExplanationDiv.style.display = 'none';
+                biometricExplanationEl.style.opacity = 0;
+                lifestyleExplanationEl.style.opacity = 0;
+                radarExplanationEl.style.opacity = 0;
+                lineExplanationEl.style.opacity = 0; // --- Hide line text on error ---
+            }
+        });
+        
+        // --- Run charts on page load with default (empty) data ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const defaultInputs = {
+                BMI: '', TotalCholesterol_mg_dL: '', FastingGlucose_mg_dL: '', SystolicBloodPressure: '',
+                SmokesNow: 'No', AlcoholFrequency: '0', ModerateActivity: 'No', VigorousActivity: 'No', HoursOfSleep: ''
+            };
+            updateCharts(defaultInputs);
+            // Hide explanations on initial load
+             document.getElementById('biometric-explanation').style.opacity = 0;
+             document.getElementById('lifestyle-explanation').style.opacity = 0;
+             document.getElementById('radar-explanation').style.opacity = 0;
+             document.getElementById('line-explanation').style.opacity = 0;
+        });
+    </script>
+</body>
+</html>
+

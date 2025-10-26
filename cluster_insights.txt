@@ -1,0 +1,32 @@
+K-Means Cluster Characteristics:
+This file explains what each cluster in the 'K-Means Clusters' plot represents.
+Each cluster is a group of people with similar health profiles as determined by the algorithm.
+
+--- Cluster 0 ---
+Average BMI: 27.57
+Average Systolic BP: 117.82
+Average Cholesterol: 154.4
+
+Insight: This group represents a moderate or mixed-risk profile.
+
+--- Cluster 1 ---
+Average BMI: 28.85
+Average Systolic BP: 116.82
+Average Cholesterol: 233.17
+
+Insight: This group represents a moderate or mixed-risk profile.
+
+--- Cluster 2 ---
+Average BMI: 41.3
+Average Systolic BP: 129.09
+Average Cholesterol: 174.45
+
+Insight: This group represents a moderate or mixed-risk profile.
+
+--- Cluster 3 ---
+Average BMI: 27.13
+Average Systolic BP: 150.23
+Average Cholesterol: 184.51
+
+Insight: This group represents a high-risk profile with elevated BMI and blood pressure.
+
