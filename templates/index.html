@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BI-Driven Health Risk Advisor</title>
-    <!-- Added Chart.js library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* --- Base Styles (DARK MODE) --- */
@@ -297,15 +296,12 @@
     <div class="container">
         <h1>BI-Driven Health Risk Advisor</h1>
 
-        <!-- Top Section Layout -->
         <div class="top-section">
             
-            <!-- ====== FORM CARD (Card 1) ====== -->
             <form id="prediction-form" class="card">
                 <h2>Your Health Profile</h2>
                 <div class="form-grid">
                     
-                    <!-- Biometric Inputs -->
                     <div class="form-group">
                         <label for="Age">Age</label>
                         <input type="number" id="Age" name="Age" placeholder="e.g., 51" required>
@@ -338,7 +334,6 @@
                         <input type="number" id="DiastolicBloodPressure" name="DiastolicBloodPressure" placeholder="e.g., 70">
                     </div>
                     
-                    <!-- Lifestyle Inputs (User-Friendly) -->
                     <div class="form-group">
                         <label for="DietType">Typical Diet</label>
                         <select id="DietType" name="DietType" required>
@@ -386,7 +381,6 @@
                 <button type="submit" class="predict-button">Calculate My Risk</button>
             </form>
 
-            <!-- ====== OUTPUT CARD (Card 2) ====== -->
             <div id="output-card" class="card">
                 <h2>Your Risk Assessment</h2>
                 <div class="gauge-container">
@@ -408,18 +402,12 @@
                 <div id="error-message"></div>
             </div>
 
-        </div> <!-- /top-section -->
+        </div> <div class="bottom-section">
 
-
-        <!-- Bottom Section Layout -->
-        <div class="bottom-section">
-
-            <!-- ====== INSIGHTS CARD (Card 3) ====== -->
             <div id="insights-card" class="card">
                 <h2>Model Insights</h2>
                 <div class="plots-container">
                     
-                    <!-- Plot 1 (Existing) + Explanation -->
                     <div class="plot-item">
                         <div class="chart-container">
                             <canvas id="biometricChart"></canvas>
@@ -429,7 +417,6 @@
                         </p>
                     </div>
                     
-                    <!-- Plot 2 (Existing) + Explanation -->
                     <div class="plot-item">
                         <div class="chart-container">
                              <canvas id="lifestyleChart"></canvas>
@@ -439,7 +426,6 @@
                         </p>
                     </div>
 
-                    <!-- Plot 3 (Existing) + Explanation -->
                     <div class="plot-item">
                         <div class="chart-container">
                              <canvas id="radarChart"></canvas>
@@ -449,7 +435,6 @@
                         </p>
                     </div>
                     
-                    <!-- ====== TASK 1: NEW DYNAMIC LINE CHART ADDED ====== -->
                     <div class="plot-item">
                         <div class="chart-container">
                              <canvas id="lineChart"></canvas>
@@ -458,16 +443,10 @@
                             This chart plots your key metrics against the ideal healthy range.
                         </p>
                     </div>
-                    <!-- ====== END OF NEW PLOT ====== -->
-
-                </div>
+                    </div>
             </div>
 
-        </div> <!-- /bottom-section -->
-
-    </div> <!-- /container -->
-
-    <script>
+        </div> </div> <script>
         // --- Global chart variables ---
         let biometricChart = null;
         let lifestyleChart = null;
@@ -959,8 +938,9 @@
 
 
             try {
-                // Use 127.0.0.1 for local development
-                const response = await fetch('https://risk-prediction-app.onrender.com/predict', { 
+                // --- THIS IS THE ONLY LINE I CHANGED ---
+                // It now points to your local server instead of onrender.com
+                const response = await fetch('http://127.0.0.1:5000/predict', { 
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -1042,7 +1022,8 @@
                 if (typeof errorMsg === 'object') {
                     errorMsg = "An unknown error occurred. Check the server console.";
                 }
-                errorMessageEl.textContent = `Error: ${errorMsg}. Is the 'python app.py' server running?`;
+                // Updated error message to be more helpful for local testing
+                errorMessageEl.textContent = `Error: ${errorMsg}. Is your 'python app.py' server running in the terminal?`;
                 errorMessageEl.style.display = 'block';
                 
                 dynamicExplanationDiv.style.display = 'none';
@@ -1069,4 +1050,3 @@
     </script>
 </body>
 </html>
-
