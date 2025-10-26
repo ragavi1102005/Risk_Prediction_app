@@ -41,6 +41,7 @@ def safe_int(value, default=0):
 
 
 # --- 1. Load All 5 Hybrid Model Files ---
+# --- THIS BLOCK IS MODIFIED TO CATCH ALL ERRORS ---
 try:
     scaler = joblib.load('models/lifestyle_scaler.pkl')
     kmeans_model = joblib.load('models/kmeans_model.pkl')
@@ -48,10 +49,12 @@ try:
     encoder = joblib.load('models/cluster_encoder.pkl')
     final_model = joblib.load('models/lbs_final_model.pkl')
     print("--- All 5 hybrid models loaded successfully. ---")
-except FileNotFoundError as e:
-    print(f"!!! CRITICAL ERROR: Model file not found. {e}")
-    print("!!! Have you run 'python model_training.py' first? !!!")
+except Exception as e:  # <-- Catches ALL exceptions, not just FileNotFoundError
+    print(f"!!! CRITICAL ERROR: Failed to load models. {e}")
+    print(f"!!! Error type: {type(e)}")
+    print("!!! This is likely a Git LFS issue or corrupted .pkl file. !!!")
     exit()
+# --- END OF MODIFIED BLOCK ---
 
 
 # --- 2. Define Helper Mappings ---
