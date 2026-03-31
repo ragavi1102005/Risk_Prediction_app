@@ -397,6 +397,7 @@
                 <div id="dynamic-explanation">
                     <h4>Explanation for Your Result:</h4>
                     <p id="explanation-text"></p>
+                    <img id="shap-graph" src="" alt="SHAP Plot" style="max-width: 100%; display: none; margin-top: 1.5rem; border-radius: 8px;">
                 </div>
 
                 <div id="error-message"></div>
@@ -443,7 +444,26 @@
                             This chart plots your key metrics against the ideal healthy range.
                         </p>
                     </div>
+                    
+
+                    <div class="plot-item">
+                        <div class="chart-container" style="display: flex; justify-content: center; align-items: center;">
+                            <img src="{{ url_for('static', filename='confusion_matrix_result.png') }}" alt="Confusion Matrix" style="max-width: 100%; max-height: 100%; border-radius: 8px;">
+                        </div>
+                        <p class="plot-explanation" style="opacity: 1;">
+                            This Confusion Matrix shows the model's accuracy on historical data, comparing true predictions against false alarms.
+                        </p>
                     </div>
+                    <div class="plot-item">
+                        <div class="chart-container" style="display: flex; justify-content: center; align-items: center;">
+                            <img src="{{ url_for('static', filename='roc_curve.png') }}" alt="AUC ROC Curve" style="max-width: 100%; max-height: 100%; border-radius: 8px;">
+                        </div>
+                        <p class="plot-explanation" style="opacity: 1;">
+                            This Receiver Operating Characteristic (ROC) curve validates our model's accuracy. A higher Area Under the Curve (AUC) indicates stronger predictive power.
+                        </p>
+                    </div>
+                    
+                </div>
             </div>
 
         </div> </div> <script>
@@ -738,63 +758,6 @@
             }
             lineChart = new Chart(ctx4, { type: 'line', data: chart4Data, options: chart4Options });
         }
-
-
-        // ====== Helper function to generate dynamic explanations (for gauge) ======
-        function generateExplanation(inputs) {
-            let explanations = [];
-            
-            const bmi = safeFloat(inputs.BMI);
-            const cholesterol = safeFloat(inputs.TotalCholesterol_mg_dL);
-            const glucose = safeFloat(inputs.FastingGlucose_mg_dL);
-            const systolic = safeFloat(inputs.SystolicBloodPressure);
-            const diastolic = safeFloat(inputs.DiastolicBloodPressure);
-            const sleep = safeFloat(inputs.HoursOfSleep);
-            const smokes = inputs.SmokesNow; 
-            const alcohol = inputs.AlcoholFrequency;
-            const moderateActivity = inputs.ModerateActivity;
-            const vigorousActivity = inputs.VigorousActivity;
-
-            if (cholesterol > 240) {
-                explanations.push("<strong>high cholesterol</strong> (over 240 mg/dL) can increase arterial stiffness.");
-            }
-            if (glucose > 125) {
-                explanations.push("<strong>elevated glucose</strong> (over 125 mg/dL) can damage blood vessels over time.");
-            }
-            if (smokes === 'Yes') {
-                explanations.push("<strong>smoking</strong> constricts blood vessels.");
-            }
-            if (alcohol !== '0') { 
-                explanations.push("regular <strong>alcohol consumption</strong> can elevate BP.");
-            }
-            if (sleep < 6 && sleep > 0) { 
-                explanations.push("<strong>less than 6 hours of sleep</strong> can contribute to BP risk.");
-            }
-            if (bmi > 25) {
-                explanations.push("a <strong>higher BMI</strong> (over 25) increases strain on the heart.");
-            }
-            if (systolic > 130 || diastolic > 85) {
-                explanations.push("your <strong>blood pressure readings</strong> are above normal, indicating early signs of hypertension risk.");
-            }
-            if (moderateActivity === 'No' && vigorousActivity === 'No') {
-                explanations.push("a <strong>lack of physical activity</strong> reduces heart efficiency.");
-            }
-
-            if (explanations.length === 0) {
-                return "Your key biometric and lifestyle factors appear to be within a healthy range. Keep up the good work!";
-            }
-            let output = "Your risk assessment is based on several factors: ";
-            if (explanations.length === 1) {
-                output += `your result is influenced by ${explanations[0]}`;
-            } else if (explanations.length === 2) {
-                output += `your result is influenced by ${explanations[0]} and ${explanations[1]}`;
-            } else {
-                let firstPart = explanations.slice(0, -1).join(", ");
-                let lastPart = explanations.slice(-1)[0];
-                output += `your result is influenced by factors including ${firstPart}, and ${lastPart}`;
-            }
-            return output + " Managing these areas can help support your cardiovascular health.";
-        }
         
         // ====== TASK 2: UPDATED Function to generate EXPANDED PLOT explanations ======
         function generatePlotExplanations(inputs) {
@@ -911,6 +874,7 @@
 
             const dynamicExplanationDiv = document.getElementById('dynamic-explanation');
             const explanationTextEl = document.getElementById('explanation-text');
+            const shapGraphEl = document.getElementById('shap-graph'); // Added for SHAP
             
             const biometricExplanationEl = document.getElementById('biometric-explanation');
             const lifestyleExplanationEl = document.getElementById('lifestyle-explanation');
@@ -927,6 +891,10 @@
             dynamicExplanationDiv.style.display = 'none';
             dynamicExplanationDiv.style.opacity = 0;
             explanationTextEl.textContent = '';
+            if (shapGraphEl) {
+                shapGraphEl.style.display = 'none';
+                shapGraphEl.src = '';
+            }
             biometricExplanationEl.innerHTML = 'This chart compares your key biometrics to the dataset average.';
             biometricExplanationEl.style.opacity = 0;
             lifestyleExplanationEl.innerHTML = 'This chart breaks down your lifestyle habits into risk vs. healthy factors.';
@@ -938,8 +906,7 @@
 
 
             try {
-                // --- THIS IS THE ONLY LINE I CHANGED ---
-                // It now points to your local server instead of onrender.com
+                // Pointing to local server
                 const response = await fetch('http://127.0.0.1:5000/predict', { 
                     method: 'POST',
                     headers: {
@@ -988,11 +955,18 @@
                 // Update Cluster Text
                 resultClusterEl.textContent = `Identified in Lifestyle Archetype: ${cluster}`;
 
-                // Generate and display the dynamic explanation (for gauge)
-                const dynamicExplanation = generateExplanation(data); 
-                if (dynamicExplanation) {
-                    explanationTextEl.innerHTML = dynamicExplanation;
+                // NEW: Use the backend-generated explanation AND Graph!
+                if (result.explanation) {
+                    explanationTextEl.innerHTML = result.explanation;
                     dynamicExplanationDiv.style.display = 'block';
+                    
+                    if (result.shap_image && shapGraphEl) {
+                        shapGraphEl.src = "data:image/png;base64," + result.shap_image;
+                        shapGraphEl.style.display = 'block';
+                    } else if (shapGraphEl) {
+                        shapGraphEl.style.display = 'none';
+                    }
+
                     setTimeout(() => { dynamicExplanationDiv.style.opacity = 1; }, 50); 
                 }
 
